@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Editar Transação</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <a href="dashboard.html" class="back-arrow">←</a>
+            <div class="form-icon" style="background: #007bff;">
+                <span>✏️</span>
+            </div>
+            <h1>Editar Transação</h1>
+            <p class="subtitle">Altere os dados da transação</p>
+            
+            <form id="edit-form">
+                <input type="hidden" id="transacao-id">
+                
+                <div class="input-group">
+                    <label for="descricao">Descrição</label>
+                    <input type="text" id="descricao" name="descricao" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="valor">Valor (R$)</label>
+                    <input type="number" id="valor" name="valor" step="0.01" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="categoria">Categoria</label>
+                    <select id="categoria" name="categoria" required>
+                        <option value="" disabled>Selecione uma categoria</option>
+                        <option value="Salário">Salário</option>
+                        <option value="Vendas">Vendas</option>
+                        <option value="Freelance">Freelance</option>
+                        <option value="Alimentação">Alimentação</option>
+                        <option value="Transporte">Transporte</option>
+                        <option value="Moradia">Moradia</option>
+                        <option value="Lazer">Lazer</option>
+                        <option value="Outros">Outros</option>
+                    </select>
+                </div>
+
+                <div class="form-buttons">
+                    <a href="dashboard.html" class="cancel-button">Cancelar</a>
+                    <button type="submit" class="submit-button" style="background: #007bff;">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>
