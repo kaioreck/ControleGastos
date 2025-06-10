@@ -17,11 +17,7 @@ Node.js e npm
 Apache Cordova (npm install -g cordova)
 Um emulador Android configurado (via Android Studio) ou um dispositivo físico.
 🚀 Como Executar o Projeto
-Clone o repositório:
 
-Bash
-
-git clone https://github.com/kaioreck/ControleGastos.git
 Acesse a pasta do projeto:
 
 Bash
