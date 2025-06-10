@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Controle de Gastos</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="dashboard-header">
+            <div class="greeting">
+                <h2>Olá, Aldo!</h2>
+                <p>Gerencie suas finanças</p>
+            </div>
+            <button id="logout-button" class="logout-button">Sair</button>
+        </header>
+
+        <main>
+            <section class="summary-cards">
+                <div class="card income">
+                    <p>Receitas</p>
+                    <h3 id="total-income">R$ 0,00</h3>
+                </div>
+                <div class="card expense">
+                    <p>Despesas</p>
+                    <h3 id="total-expense">R$ 0,00</h3>
+                </div>
+                <div class="card balance">
+                    <p>Saldo</p>
+                    <h3 id="total-balance">R$ 0,00</h3>
+                </div>
+            </section>
+
+            <section class="action-buttons">
+                <button class="action-btn income-btn">+ Adicionar Receita</button>
+                <button class="action-btn expense-btn">- Adicionar Despesa</button>
+                <button class="action-btn converter-btn">⇄ Conversor de Moedas</button>
+            </section>
+
+            <section class="transactions-section">
+                <div class="transactions-header">
+                    <h3>Transações Recentes</h3>
+                    <a href="transacoes.html" class="view-all">Ver Todas</a>
+                </div>
+                <div id="recent-transactions-list" class="transactions-list">
+                    </div>
+            </section>
+        </main>
+    </div>
+    <script src="/www/js/app.js"></script>
+</body>
+</html>

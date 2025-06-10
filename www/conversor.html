@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Conversor de Moedas</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <a href="dashboard.html" class="back-arrow">←</a>
+            <div class="form-icon" style="background: #007bff;">
+                <span>⇄</span>
+            </div>
+            <h1>Conversor em Tempo Real</h1>
+            <p class="subtitle">Selecione as moedas e digite um valor</p>
+            
+            <form id="conversor-form" onsubmit="return false;">
+                <div class="input-group">
+                    <label for="amount">Valor a converter</label>
+                    <input type="number" id="amount" value="1" step="0.01">
+                </div>
+
+                <div class="input-group">
+                    <label for="from_currency">De:</label>
+                    <select id="from_currency">
+                        <option value="USD">USD - Dólar Americano</option>
+                        <option value="BRL" selected>BRL - Real Brasileiro</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="JPY">JPY - Iene Japonês</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="to_currency">Para:</label>
+                    <select id="to_currency">
+                        <option value="USD" selected>USD - Dólar Americano</option>
+                        <option value="BRL">BRL - Real Brasileiro</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="JPY">JPY - Iene Japonês</option>
+                    </select>
+                </div>
+                
+                <div id="conversion-result" class="conversion-result-box">
+                    Calculando...
+                </div>
+            </form>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+</body>
+</html>
