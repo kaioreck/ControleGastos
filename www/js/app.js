@@ -80,6 +80,14 @@ function logout() {
 }
 
 /**
+ * --- FUNÇÃO AUXILIAR PARA FORMATAR VALORES MONETÁRIOS ---
+ * Formata um número para o formato monetário brasileiro (ex: 1.234.567,89).
+ */
+function formatarMoedaBRL(valor) {
+    return parseFloat(valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
  * --- FUNÇÃO DE RENDERIZAÇÃO ---
  * Recebe uma lista de transações e um ID de elemento para renderizar o HTML.
  */
@@ -95,6 +103,9 @@ function renderizarListaTransacoes(lista, elementoId) {
         const tipoClasse = transacao.tipo;
         const sinal = tipoClasse === 'receita' ? '+' : '-';
         const dataFormatada = new Date(transacao.data).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+        // Usa a nova função formatarMoedaBRL para o valor
+        const valorFormatado = formatarMoedaBRL(transacao.valor);
+
         containerLista.innerHTML += `
             <div class="transaction-item" id="transacao-${transacao.id}">
                 <div class="transaction-details">
@@ -105,7 +116,7 @@ function renderizarListaTransacoes(lista, elementoId) {
                     </div>
                 </div>
                 <div class="transaction-value-group">
-                    <div class="transaction-value ${tipoClasse === 'receita' ? 'income' : 'expense'}">${sinal}R$ ${parseFloat(transacao.valor).toFixed(2)}</div>
+                    <div class="transaction-value ${tipoClasse === 'receita' ? 'income' : 'expense'}">${sinal}R$ ${valorFormatado}</div>
                     <div class="transaction-actions">
                         <button class="action-icon edit" title="Editar" data-id="${transacao.id}">✏️</button>
                         <button class="action-icon delete" title="Excluir" data-id="${transacao.id}">🗑️</button>
@@ -190,9 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         t.tipo === 'receita' ? totalReceitas += valor : totalDespesas += valor;
                     });
                     const saldoFinal = totalReceitas - totalDespesas;
-                    document.getElementById('total-income').innerHTML = `R$ ${totalReceitas.toFixed(2)}`;
-                    document.getElementById('total-expense').innerHTML = `R$ ${totalDespesas.toFixed(2)}`;
-                    dashboardElement.innerHTML = `R$ ${saldoFinal.toFixed(2)}`;
+                    // Usa formatarMoedaBRL para os valores do dashboard
+                    document.getElementById('total-income').innerHTML = `R$ ${formatarMoedaBRL(totalReceitas)}`;
+                    document.getElementById('total-expense').innerHTML = `R$ ${formatarMoedaBRL(totalDespesas)}`;
+                    dashboardElement.innerHTML = `R$ ${formatarMoedaBRL(saldoFinal)}`;
                     renderizarListaTransacoes(transacoes.slice(0, 5), 'recent-transactions-list');
                 }
             });
@@ -237,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // PÁGINA DE EDIÇÃO
+// PÁGINA DE EDIÇÃO
     const editForm = document.getElementById('edit-form');
     if (editForm) {
         if (checkLogin()) {
@@ -249,8 +261,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (transacao) {
                         editForm.querySelector('#transacao-id').value = transacao.id;
                         editForm.querySelector('#descricao').value = transacao.descricao;
-                        editForm.querySelector('#valor').value = parseFloat(transacao.valor);
-                        editForm.querySelector('#categoria').value = transacao.categoria;
+                        // Use toLocaleString para exibir o valor formatado no campo de edição
+                        // Nota: Para inputs type="number", o JavaScript lida com o valor numérico
+                        // e o navegador decide como exibi-lo (geralmente sem pontos/vírgulas para entrada).
+                        // Se você quiser que o usuário DIGITE com pontos/vírgulas, o input precisaria ser type="text"
+                        // e você precisaria de uma máscara JavaScript.
+                        // Por enquanto, vamos garantir que o valor seja carregado corretamente e a formatação
+                        // só afeta a exibição final (dashboard, lista de transações).
+                        // No campo de input, o navegador pode remover a formatação visual.
+                        editForm.querySelector('#valor').value = parseFloat(transacao.valor).toFixed(2);
                     }
                 });
             }
@@ -288,13 +307,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const amount = amountInput.value;
             const fromCurrency = fromCurrencySelect.value;
             const toCurrency = toCurrencySelect.value;
-            if (!amount) return;
+            if (!amount) {
+                resultDiv.innerHTML = "Digite um valor para converter."; // Adicionado feedback para valor vazio
+                return;
+            }
 
             resultDiv.innerHTML = "Calculando...";
             const data = await apiFetch(`${API_URL}/converter-moeda?from=${fromCurrency}&to=${toCurrency}&amount=${amount}`);
 
             if (data && data.result === 'success') {
-                resultDiv.innerHTML = `${amount} ${fromCurrency} = ${data.conversion_result.toFixed(2)} ${toCurrency}`;
+                // Formata o resultado da conversão também
+                const valorConvertidoFormatado = formatarMoedaBRL(data.conversion_result);
+                resultDiv.innerHTML = `${formatarMoedaBRL(amount)} ${fromCurrency} = ${valorConvertidoFormatado} ${toCurrency}`;
             } else {
                 resultDiv.innerHTML = (data && data.error) ? data.error : "Erro na conversão.";
             }
@@ -303,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
         amountInput.addEventListener('input', converterMoeda);
         fromCurrencySelect.addEventListener('change', converterMoeda);
         toCurrencySelect.addEventListener('change', converterMoeda);
-        converterMoeda();
+        converterMoeda(); // Chamar na carga da página para exibir um valor inicial
     }
 
     // --- LISTENERS GLOBAIS DE CLIQUES E BOTÕES ---
@@ -321,6 +345,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sucesso) {
                     const elementoParaRemover = document.getElementById(`transacao-${id}`);
                     if (elementoParaRemover) elementoParaRemover.remove();
+                    // Atualizar o dashboard após a exclusão para refletir o novo saldo
+                    if (document.getElementById('total-balance')) { // Verifica se está no dashboard
+                        apiFetch(`${API_URL}/transacoes`).then(transacoes => {
+                            if (transacoes) {
+                                let totalReceitas = 0, totalDespesas = 0;
+                                transacoes.forEach(t => {
+                                    const valor = parseFloat(t.valor);
+                                    t.tipo === 'receita' ? totalReceitas += valor : totalDespesas += valor;
+                                });
+                                const saldoFinal = totalReceitas - totalDespesas;
+                                document.getElementById('total-income').innerHTML = `R$ ${formatarMoedaBRL(totalReceitas)}`;
+                                document.getElementById('total-expense').innerHTML = `R$ ${formatarMoedaBRL(totalDespesas)}`;
+                                document.getElementById('total-balance').innerHTML = `R$ ${formatarMoedaBRL(saldoFinal)}`;
+                                // Não renderiza a lista de transações recentes aqui, pois isso é para a tela de todas as transações
+                                // ou o dashboard já terá sido atualizado pelo trecho da página do dashboard.
+                                // Se for a lista de transações recentes, você precisaria de um renderizarListaTransacoes(transacoes.slice(0, 5), 'recent-transactions-list');
+                            }
+                        });
+                    }
                 }
             }
         }
