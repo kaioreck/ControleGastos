@@ -4,36 +4,61 @@ const cors = require('cors');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const fetch = require('node-fetch');
-const jwt = require('jsonwebtoken'); // Importado para gerenciar tokens
+const jwt = require('jsonwebtoken');
+require('dotenv').config(); // Carrega as variáveis do arquivo .env
 
 // --- Configurações Iniciais ---
 const app = express();
 const port = 3000;
 const saltRounds = 10;
-// ATENÇÃO: Troque este segredo por uma frase longa e segura em produção
 const JWT_SECRET = 'seu-segredo-super-secreto-e-dificil-de-adivinhar';
 
 // --- Middlewares ---
 app.use(cors());
 app.use(express.json());
 
-// --- Configuração da Conexão com o PostgreSQL ---
-const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'aldomobile',
-    password: '123456', // <-- CONFIRME SE SUA SENHA ESTÁ CORRETA AQUI
-    port: 5432,
-});
+// --- CONFIGURAÇÃO FINAL E DINÂMICA DA CONEXÃO ---
+const isProduction = process.env.NODE_ENV === 'production';
+let pool;
 
+if (isProduction) {
+    // Configuração para o NEON (Produção)
+    console.log("Ambiente: Produção | Conectando ao Neon DB...");
+    pool = new Pool({
+        connectionString: process.env.DATABASE_URL_NEON,
+        ssl: {
+            rejectUnauthorized: false
+        }
+    });
+} else {
+    // Configuração para o PostgreSQL (Local)
+    console.log("Ambiente: Desenvolvimento | Conectando ao PostgreSQL Local...");
+
+    // ---- DEBUG: VAMOS VER O QUE ESTÁ DENTRO DAS VARIÁVEIS ----
+    console.log('--- Valores do .env ---');
+    console.log('DB_HOST:', process.env.DB_HOST, '| tipo:', typeof process.env.DB_HOST);
+    console.log('DB_PORT:', process.env.DB_PORT, '| tipo:', typeof process.env.DB_PORT);
+    console.log('DB_USER:', process.env.DB_USER, '| tipo:', typeof process.env.DB_USER);
+    console.log('DB_PASSWORD:', process.env.DB_PASSWORD, '| tipo:', typeof process.env.DB_PASSWORD);
+    console.log('DB_DATABASE:', process.env.DB_DATABASE, '| tipo:', typeof process.env.DB_DATABASE);
+    console.log('-----------------------');
+    // ---- FIM DO DEBUG ----
+
+    pool = new Pool({
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_DATABASE
+    });
+}
 /**
  * --- Middleware de Autenticação ---
- * Esta função irá verificar o token JWT em cada requisição que precisar de proteção.
- * Ela é colocada antes da lógica da rota.
+ * (O resto do seu código permanece exatamente igual)
  */
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Formato esperado: "Bearer TOKEN"
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
         return res.status(401).json({ error: 'Acesso negado. Nenhum token fornecido.' });
@@ -41,15 +66,12 @@ function authenticateToken(req, res, next) {
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            // Se o token expirou ou é inválido
             return res.status(403).json({ error: 'Token inválido ou expirado.' });
         }
-        // Se o token for válido, salva os dados do usuário (payload) na requisição
         req.user = user;
-        next(); // Continua para a execução da rota
+        next();
     });
 }
-
 
 // --- Rota Segura para o Conversor de Moedas ---
 app.get('/converter-moeda', async (req, res) => {
@@ -68,6 +90,7 @@ app.get('/converter-moeda', async (req, res) => {
 });
 
 // --- Rotas de Autenticação ---
+// (Todas as suas rotas de /registrar, /login, /transacoes, etc. continuam aqui, sem alterações)
 app.post('/registrar', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Nome de usuário e senha são obrigatórios.' });
@@ -93,19 +116,16 @@ app.post('/login', async (req, res) => {
         const senhaCorreta = await bcrypt.compare(password, user.password_hash);
         if (!senhaCorreta) return res.status(401).json({ error: 'Usuário ou senha inválidos.' });
 
-        // >>>>> PONTO CRÍTICO DA CORREÇÃO <<<<<
-        // Gera o Token JWT com os dados do usuário que não pode ser adivinhado
         const accessToken = jwt.sign(
             { id: user.id, username: user.username },
             JWT_SECRET,
-            { expiresIn: '1h' } // O token expira em 1 hora para segurança
+            { expiresIn: '1h' }
         );
 
-        // Envia o token de volta para o cliente junto com os outros dados
         res.status(200).json({
             id: user.id,
             username: user.username,
-            token: accessToken // <-- O frontend precisa disso para funcionar!
+            token: accessToken
         });
 
     } catch (error) {
@@ -115,11 +135,8 @@ app.post('/login', async (req, res) => {
 });
 
 // --- Rotas de Transações (CRUD) PROTEGIDAS ---
-
-// Adicionamos o `authenticateToken` antes da lógica de cada rota de transação
 app.get('/transacoes', authenticateToken, async (req, res) => {
     try {
-        // Usa o `req.user.id` injetado pelo middleware para buscar apenas as transações do usuário logado
         const { rows } = await pool.query('SELECT * FROM transacoes WHERE usuario_id = $1 ORDER BY data DESC, id DESC', [req.user.id]);
         res.status(200).json(rows);
     } catch (error) {
@@ -134,7 +151,7 @@ app.post('/transacoes', authenticateToken, async (req, res) => {
     try {
         const { rows } = await pool.query(
             'INSERT INTO transacoes (descricao, valor, tipo, categoria, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [descricao, valor, tipo, categoria, req.user.id] // Adiciona o ID do usuário logado
+            [descricao, valor, tipo, categoria, req.user.id]
         );
         res.status(201).json(rows[0]);
     } catch (error) {
@@ -180,7 +197,6 @@ app.delete('/transacoes/:id', authenticateToken, async (req, res) => {
         res.status(500).send('Erro interno do servidor');
     }
 });
-
 
 // --- Inicialização do Servidor ---
 app.listen(port, () => {
